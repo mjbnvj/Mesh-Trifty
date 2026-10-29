@@ -30,15 +30,6 @@
         <button class="primary" type="submit">Sign in</button>
       </div>
       <p class="error" id="login-error" role="alert"></p>
-      <section id="mfa-panel" hidden>
-        <p class="intro" id="mfa-intro"></p>
-        <img id="mfa-qr" alt="Authenticator setup QR code" hidden style="display:block;max-width:220px;margin:12px auto">
-        <p class="intro" id="mfa-manual-label" hidden>Or enter this setup key in Google Authenticator:</p>
-        <code id="mfa-manual-key" style="overflow-wrap:anywhere"></code>
-        <label class="field">Six-digit authenticator code<input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
-        <p class="error" id="mfa-error" role="alert"></p>
-        <button class="primary" id="mfa-verify" type="button">Verify and continue</button>
-      </section>
       <p class="muted"><a href="index.html">← Back to the storefront</a></p>
     </form>
   </main>

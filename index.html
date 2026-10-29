@@ -418,7 +418,6 @@
     .account-tab { min-height: 40px; border: 0; background: transparent; cursor: pointer; font-size: 11px; }
     .account-tab.active { background: var(--paper); font-weight: 700; }
     .account-form, .checkout-form { display: grid; gap: 13px; }
-    #mfa-code-form { display: grid; gap: 13px; }
     .account-field, .checkout-field { display: grid; gap: 6px; font-size: 10px; font-weight: 600; }
     .account-field input, .checkout-field input { width: 100%; min-height: 44px; padding: 0 11px; border: 1px solid var(--line); background: transparent; font-size: 13px; }
     .password-guidance, .form-error { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
@@ -765,19 +764,6 @@
         <p class="form-error" id="recovery-password-error" role="alert"></p>
         <button class="account-submit" type="submit">Set new password</button>
       </form>
-      <section id="mfa-panel" hidden>
-        <p id="mfa-intro"></p>
-        <img id="mfa-qr" alt="Authenticator setup QR code" hidden>
-        <p id="mfa-manual-label" hidden>Or enter this setup key in Google Authenticator:</p>
-        <code id="mfa-manual-key"></code>
-        <form id="mfa-code-form">
-          <label class="account-field" for="mfa-code">Six-digit authenticator code
-            <input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
-          </label>
-          <p class="form-error" id="mfa-error" role="alert"></p>
-          <button class="account-submit" id="mfa-verify" type="submit">Verify and continue</button>
-        </form>
-      </section>
       <section class="account-profile" id="account-profile" hidden>
         <div class="account-order-head"><strong>Your orders</strong><button class="account-link" id="refresh-account-orders" type="button">Refresh</button></div>
         <div class="account-orders" id="account-orders"></div>

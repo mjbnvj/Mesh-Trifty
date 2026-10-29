@@ -2,17 +2,14 @@ import {
   accessToken,
   currentUser,
   getConfig,
-  hasMfaAssurance,
   initializeAuth,
   isPasswordRecovery,
   onAuthChange,
-  prepareTotpLogin,
   requestPasswordReset,
   signIn,
   signOut,
   signUp,
-  updateRecoveredPassword,
-  verifyTotpCode
+  updateRecoveredPassword
 } from "./auth-client.js";
 
 const CART_KEY = "meshtrifty.cart.v1";
@@ -44,7 +41,6 @@ let selectedProduct = null;
 let toastTimeout;
 let shippingFee = 100;
 let catalogAvailable = false;
-let pendingMfa = null;
 
 const money = value => new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -276,57 +272,8 @@ function renderAuth() {
   document.getElementById("sign-out").hidden = !user;
   document.querySelector(".account-tabs").hidden = Boolean(user);
   if (user) {
-    pendingMfa = null;
-    document.getElementById("mfa-panel").hidden = true;
     loadAccountOrders();
   }
-}
-
-function renderMfaQr(qrCode) {
-  const image = document.getElementById("mfa-qr");
-  if (typeof qrCode !== "string") throw new Error("The authenticator QR code is unavailable.");
-  if (qrCode.startsWith("data:image/svg+xml")) {
-    image.src = qrCode;
-  } else if (qrCode.trimStart().startsWith("<svg")) {
-    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrCode)}`;
-  } else {
-    throw new Error("The authenticator QR code has an invalid format.");
-  }
-  image.hidden = false;
-}
-
-async function beginMfaGate() {
-  const result = await prepareTotpLogin();
-  if (result.status === "verified") {
-    pendingMfa = null;
-    renderAuth();
-    return true;
-  }
-
-  pendingMfa = result;
-  document.getElementById("account-form").hidden = true;
-  document.getElementById("recovery-password-form").hidden = true;
-  document.querySelector(".account-tabs").hidden = true;
-  document.getElementById("account-profile").hidden = true;
-  document.getElementById("sign-out").hidden = true;
-  document.getElementById("mfa-panel").hidden = false;
-  document.getElementById("mfa-error").textContent = "";
-  document.getElementById("mfa-manual-key").textContent = "";
-  document.getElementById("mfa-manual-key").hidden = true;
-  document.getElementById("mfa-manual-label").hidden = true;
-  document.getElementById("mfa-qr").hidden = true;
-  document.getElementById("mfa-intro").textContent = result.status === "enroll"
-    ? "Set up Google Authenticator (or another TOTP app). Scan this QR code, or enter the setup key, then verify the six-digit code."
-    : "Enter the six-digit code from your authenticator app to finish signing in.";
-  if (result.status === "enroll") {
-    renderMfaQr(result.qrCode);
-    document.getElementById("mfa-manual-label").hidden = false;
-    document.getElementById("mfa-manual-key").hidden = false;
-    document.getElementById("mfa-manual-key").textContent = result.secret;
-  }
-  setAccountOpen(true);
-  document.getElementById("mfa-code").focus();
-  return false;
 }
 
 async function loadAccountOrders() {
@@ -365,52 +312,24 @@ async function submitAccount(event) {
       const result = await signUp({ name: document.getElementById("account-name").value.trim(), email, password });
       form.reset();
       if (result.needsEmailConfirmation) {
-        error.textContent = "Check your email and confirm your account. You'll return here to set up your authenticator.";
+        error.textContent = "Check your email to confirm your account, then sign in.";
       } else {
-        if (await beginMfaGate()) {
-          setAccountOpen(false);
-          showToast("Your account is ready.");
-        }
+        setAccountOpen(false);
+        showToast("Your account is ready.");
       }
     } else {
       await signIn(email, password);
       form.reset();
-      if (await beginMfaGate()) {
-        setAccountOpen(false);
-        showToast("You are signed in.");
-        if (isPasswordRecovery()) showRecoveryPasswordForm();
-      }
+      setAccountOpen(false);
+      showToast("You are signed in.");
+      if (isPasswordRecovery()) showRecoveryPasswordForm();
     }
-  } catch (requestError) {
-    const mfaError = document.getElementById("mfa-panel").hidden ? null : document.getElementById("mfa-error");
-    (mfaError || error).textContent = requestError.message;
-  } finally {
-    submit.disabled = false;
-  }
-}
-
-document.getElementById("mfa-code-form").addEventListener("submit", async event => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  if (!form.reportValidity() || !pendingMfa) return;
-  const submit = document.getElementById("mfa-verify");
-  const error = document.getElementById("mfa-error");
-  submit.disabled = true;
-  error.textContent = "";
-  try {
-    await verifyTotpCode(pendingMfa.factorId, pendingMfa.challengeId, document.getElementById("mfa-code").value);
-    pendingMfa = null;
-    form.reset();
-    document.getElementById("mfa-panel").hidden = true;
-    renderAuth();
-    setAccountOpen(false);
-    showToast("Two-factor sign-in complete.");
   } catch (requestError) {
     error.textContent = requestError.message;
   } finally {
     submit.disabled = false;
   }
-});
+}
 
 function showRecoveryPasswordForm() {
   document.getElementById("recovery-password-form").hidden = false;
@@ -707,15 +626,7 @@ if (isPasswordRecovery()) {
   showRecoveryPasswordForm();
   setAccountOpen(true);
 }
-initializeAuth().then(async user => {
-  if (user && !hasMfaAssurance() && !isPasswordRecovery()) {
-    try {
-      await beginMfaGate();
-    } catch (error) {
-      console.error("Could not start authenticator verification.", error);
-      showToast("Two-factor authentication could not be started.");
-    }
-  }
+initializeAuth().then(() => {
   if (isPasswordRecovery()) showRecoveryPasswordForm();
 }).catch(error => {
   console.error("Could not initialize the account service.", error);

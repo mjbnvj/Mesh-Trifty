@@ -15,7 +15,7 @@ function readRecoveryToken() {
 }
 
 function emit() {
-  listeners.forEach(listener => listener(hasMfaAssurance() ? session?.user || null : null));
+  listeners.forEach(listener => listener(session?.user || null));
 }
 
 function saveSession(value) {
@@ -138,19 +138,7 @@ export function onAuthChange(listener) {
 }
 
 export function currentUser() {
-  return hasMfaAssurance() ? session?.user || null : null;
-}
-
-export function hasMfaAssurance() {
-  try {
-    const token = session?.access_token;
-    if (!token) return false;
-    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const claims = JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, "=")));
-    return claims.aal === "aal2";
-  } catch {
-    return false;
-  }
+  return session?.user || null;
 }
 
 export function isPasswordRecovery() {
@@ -183,60 +171,6 @@ export async function signIn(email, password) {
   });
   saveSession(result);
   return result.user;
-}
-
-export async function prepareTotpLogin() {
-  if (!session) throw new Error("Sign in to continue.");
-  if (hasMfaAssurance()) return { status: "verified" };
-
-  const token = await accessToken();
-  const factors = await authRequest("factors", { method: "GET", token });
-  const listedFactors = Array.isArray(factors) ? factors : (factors.totp || factors.all || []);
-  const totpFactors = listedFactors.filter(factor => factor.factor_type === "totp");
-  const verified = totpFactors.find(factor => factor.status === "verified");
-
-  if (verified) {
-    const challenge = await authRequest(`factors/${encodeURIComponent(verified.id)}/challenge`, { token });
-    const challengeId = challenge.id || challenge.challenge_id;
-    if (!challengeId) throw new Error("The authenticator challenge could not be started.");
-    return { status: "verify", factorId: verified.id, challengeId };
-  }
-
-  for (const factor of totpFactors) {
-    await authRequest(`factors/${encodeURIComponent(factor.id)}`, { method: "DELETE", token });
-  }
-
-  const enrollment = await authRequest("factors", {
-    token,
-    body: { factor_type: "totp", friendly_name: "Google Authenticator" }
-  });
-  if (!enrollment.id || !enrollment.totp?.secret || !enrollment.totp?.qr_code) {
-    throw new Error("The authenticator setup could not be created.");
-  }
-  const challenge = await authRequest(`factors/${encodeURIComponent(enrollment.id)}/challenge`, { token });
-  const challengeId = challenge.id || challenge.challenge_id;
-  if (!challengeId) throw new Error("The authenticator challenge could not be started.");
-  return {
-    status: "enroll",
-    factorId: enrollment.id,
-    challengeId,
-    secret: enrollment.totp.secret,
-    qrCode: enrollment.totp.qr_code
-  };
-}
-
-export async function verifyTotpCode(factorId, challengeId, code) {
-  if (!/^\d{6}$/.test(code)) throw new Error("Enter the six-digit code from your authenticator app.");
-  const token = await accessToken();
-  const result = await authRequest(`factors/${encodeURIComponent(factorId)}/verify`, {
-    token,
-    body: { challenge_id: challengeId, code }
-  });
-  if (!result.access_token || !result.refresh_token) {
-    throw new Error("The authenticator code could not be verified.");
-  }
-  saveSession(result);
-  if (!hasMfaAssurance()) throw new Error("Supabase did not confirm the second authentication factor.");
 }
 
 export async function signOut() {

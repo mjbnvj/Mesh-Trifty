@@ -1,12 +1,9 @@
 import {
   accessToken,
   currentUser,
-  hasMfaAssurance,
   initializeAuth,
-  prepareTotpLogin,
   signIn,
-  signOut,
-  verifyTotpCode
+  signOut
 } from "./auth-client.js";
 
 const ORDER_STATUSES = ["Pending", "Processing", "Shipped", "Completed", "Cancelled"];
@@ -14,7 +11,6 @@ let products = [];
 let orders = [];
 let shippingFee = 100;
 let toastTimer;
-let pendingMfa = null;
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({
   "&": "&amp;",
@@ -166,50 +162,6 @@ function closeProductForm() {
   document.getElementById("product-modal").hidden = true;
 }
 
-function renderMfaQr(qrCode) {
-  const image = document.getElementById("mfa-qr");
-  if (typeof qrCode !== "string") throw new Error("The authenticator QR code is unavailable.");
-  if (qrCode.startsWith("data:image/svg+xml")) {
-    image.src = qrCode;
-  } else if (qrCode.trimStart().startsWith("<svg")) {
-    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrCode)}`;
-  } else {
-    throw new Error("The authenticator QR code has an invalid format.");
-  }
-  image.hidden = false;
-}
-
-async function beginMfaGate() {
-  const result = await prepareTotpLogin();
-  if (result.status === "verified") {
-    pendingMfa = null;
-    document.getElementById("mfa-panel").hidden = true;
-    document.getElementById("login-credentials").hidden = false;
-    return true;
-  }
-
-  pendingMfa = result;
-  document.getElementById("login-credentials").hidden = true;
-  document.getElementById("login-error").textContent = "";
-  document.getElementById("mfa-panel").hidden = false;
-  document.getElementById("mfa-error").textContent = "";
-  document.getElementById("mfa-manual-key").textContent = "";
-  document.getElementById("mfa-manual-key").hidden = true;
-  document.getElementById("mfa-manual-label").hidden = true;
-  document.getElementById("mfa-qr").hidden = true;
-  document.getElementById("mfa-intro").textContent = result.status === "enroll"
-    ? "Set up Google Authenticator (or another TOTP app). Scan this QR code, or enter the setup key, then verify the six-digit code."
-    : "Enter the six-digit code from your authenticator app to finish signing in.";
-  if (result.status === "enroll") {
-    renderMfaQr(result.qrCode);
-    document.getElementById("mfa-manual-label").hidden = false;
-    document.getElementById("mfa-manual-key").hidden = false;
-    document.getElementById("mfa-manual-key").textContent = result.secret;
-  }
-  document.getElementById("mfa-code").focus();
-  return false;
-}
-
 document.getElementById("login-form").addEventListener("submit", async event => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -220,30 +172,11 @@ document.getElementById("login-form").addEventListener("submit", async event => 
   error.textContent = "";
   try {
     await signIn(document.getElementById("login-email").value.trim().toLowerCase(), document.getElementById("login-password").value);
-    if (await beginMfaGate()) await loadDashboard();
-  } catch (requestError) {
-    const mfaError = document.getElementById("mfa-panel").hidden ? null : document.getElementById("mfa-error");
-    (mfaError || error).textContent = requestError.message;
-  } finally {
-    submit.disabled = false;
-  }
-});
-
-document.getElementById("mfa-verify").addEventListener("click", async event => {
-  const input = document.getElementById("mfa-code");
-  const error = document.getElementById("mfa-error");
-  if (!input.reportValidity() || !pendingMfa) return;
-  event.currentTarget.disabled = true;
-  error.textContent = "";
-  try {
-    await verifyTotpCode(pendingMfa.factorId, pendingMfa.challengeId, input.value);
-    pendingMfa = null;
-    input.value = "";
     await loadDashboard();
   } catch (requestError) {
     error.textContent = requestError.message;
   } finally {
-    event.currentTarget.disabled = false;
+    submit.disabled = false;
   }
 });
 
@@ -382,11 +315,7 @@ document.getElementById("settings-form").addEventListener("submit", async event 
 
 const user = await initializeAuth();
 if (user) {
-  try {
-    if (hasMfaAssurance()) await loadDashboard();
-    else await beginMfaGate();
-  } catch (error) {
-    const mfaError = document.getElementById("mfa-panel").hidden ? null : document.getElementById("mfa-error");
-    (mfaError || document.getElementById("login-error")).textContent = error.message;
-  }
+  await loadDashboard().catch(error => {
+    document.getElementById("login-error").textContent = error.message;
+  });
 }

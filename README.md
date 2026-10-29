@@ -5,8 +5,8 @@ The storefront is a static Cloudflare Pages site with Pages Functions for privat
 ## 1. Create the Supabase project
 
 1. Create a Supabase project and keep its database password private.
-2. In **SQL Editor**, run [`supabase/migrations/20261030000000_commerce.sql`](./supabase/migrations/20261030000000_commerce.sql).
-3. In **Authentication → URL Configuration**, set the production storefront URL as the Site URL and allow the storefront's production URL (including `/index.html`) as a redirect URL. Signup confirmation and password recovery redirect back to `/index.html`; after confirming signup, the storefront immediately starts authenticator setup.
+2. In **SQL Editor**, run [`supabase/migrations/20261030000000_commerce.sql`](./supabase/migrations/20261030000000_commerce.sql), then [`supabase/migrations/20261030010000_remove_mfa_requirement.sql`](./supabase/migrations/20261030010000_remove_mfa_requirement.sql). If the commerce migration was already run, only run the second migration.
+3. In **Authentication → URL Configuration**, set the production storefront URL as the Site URL and allow the storefront's production URL (including `/index.html`) as a redirect URL. Signup confirmation and password recovery redirect back to `/index.html`.
 4. Enable email confirmation in **Authentication → Providers → Email**. For this school/demo project, use Supabase's built-in email sender and customize its **Reset Password** template using [`supabase/email-templates/reset-password.html`](./supabase/email-templates/reset-password.html). The built-in sender is free, but restricted to addresses belonging to members of the Supabase organization and currently limited to 2 emails per hour; its limits can change and it has no delivery SLA. This is suitable for testing/demo, not public production use.
 5. In **Project Settings → API**, note the project URL, publishable/anon key, and service-role/secret key. The service-role key must never be put in browser code.
 
@@ -42,25 +42,26 @@ Do not commit Supabase keys, passwords, customer data, or local environment file
 1. Register the intended administrator email through the storefront and complete Supabase email confirmation.
 2. Add that exact email to the Cloudflare `ADMIN_EMAILS` variable (comma-separated for multiple administrators) and redeploy.
 3. Sign in at `/admin.html`. The server verifies the Supabase access token and checks the confirmed email against the allowlist on every admin request. Public signup does not grant admin access.
-4. On first sign-in, scan the displayed QR code with Google Authenticator (or another TOTP-compatible app), or manually enter its setup key; enter the six-digit code to finish setup. Customers must also enroll and verify an authenticator before checkout or order history is available.
-5. In Products, set accurate prices and stock, then publish products. In Settings, set the actual flat delivery fee.
+4. In Products, set accurate prices and stock, then publish products. In Settings, set the actual flat delivery fee.
 
 ## What's implemented
 
 - Public catalog and category filters; product details and size selection.
 - Browser-persisted cart and wishlist.
-- Supabase email/password signup, sign-in, email confirmation, and TOTP two-factor authentication for customers and admins.
+- Supabase email/password signup, sign-in, and email confirmation for customers and admins.
 - Supabase Auth password recovery with a branded, responsive HTML email template and plain-text fallback.
 - Authenticated order history and COD checkout.
 - Server-authoritative prices, shipping, inventory checks, and atomic stock deduction when placing orders.
 - Allowlisted admin panel for products, inventory, order status, dashboard totals, and shipping fees.
-- Customer-scoped database row-level security; customer APIs and order policies require Supabase AAL2 (verified MFA). Admin database operations stay behind Cloudflare Pages Functions.
+- Customer-scoped database row-level security; admin database operations stay behind Cloudflare Pages Functions.
+
+Authenticator verification is not required. Admin accounts remain restricted by the `ADMIN_EMAILS` allowlist and confirmed email addresses.
 
 Order statuses progress from Pending to Processing to Shipped to Completed. Pending or Processing orders may be cancelled; cancelling an order restores its stock. Payment collection, delivery, refunds, and contacting customers remain manual COD operations.
 
 ## Before accepting real orders
 
 - Replace sample product names/images with products you are authorized to sell, and verify inventory and prices.
-- Test signup, email confirmation, Supabase password reset, TOTP enrollment and sign-in, customer order isolation, unavailable stock, concurrent checkout, cancellation/restocking, and admin access using separate customer/admin accounts.
+- Test signup, email confirmation, Supabase password reset, customer order isolation, unavailable stock, concurrent checkout, cancellation/restocking, and admin access using separate customer/admin accounts.
 - Review Supabase Auth email deliverability, backup/retention, privacy policy, terms, delivery/return rules, and applicable tax and consumer requirements for your operating region.
 - The project intentionally does not integrate an online payment gateway, automated shipping carrier, or newsletter/email marketing provider.

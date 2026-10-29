@@ -63,14 +63,6 @@ export async function authenticate(request, env) {
   if (!response.ok) throw new HttpError(401, "Your session expired. Sign in again.");
   const user = await response.json();
   if (!user?.id || !user.email) throw new HttpError(401, "Your session is invalid.");
-  try {
-    const encodedClaims = match[1].split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const claims = JSON.parse(atob(encodedClaims.padEnd(Math.ceil(encodedClaims.length / 4) * 4, "=")));
-    if (claims.aal !== "aal2") throw new HttpError(403, "Complete authenticator verification before continuing.");
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(401, "Your session is invalid.");
-  }
   return user;
 }
 
