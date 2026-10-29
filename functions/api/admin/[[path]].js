@@ -7,7 +7,10 @@ export async function onRequest({ request, env, params }) {
   try {
     const user = await authenticate(request, env);
     requireAdmin(user, env);
-    const path = String(params.path || "").split("/").filter(Boolean);
+    const rawPath = params.path || "";
+    const path = (Array.isArray(rawPath) ? rawPath : [rawPath])
+      .flatMap(segment => String(segment).split("/"))
+      .filter(Boolean);
     const resource = path.join("/");
 
     if (resource === "dashboard" && request.method === "GET") {
