@@ -3,13 +3,13 @@ import { authenticate, requireAdmin, requireProductPayload, requireText, supabas
 
 const PRODUCT_COLUMNS = "id,name,note,category,tag,image,price,stock,active,created_at,updated_at";
 
-export async function onRequest({ request, env, params }) {
+export async function onRequest({ request, env }) {
   try {
     const user = await authenticate(request, env);
     requireAdmin(user, env);
-    const rawPath = params.path || "";
-    const path = (Array.isArray(rawPath) ? rawPath : [rawPath])
-      .flatMap(segment => String(segment).split("/"))
+    const routePath = new URL(request.url).pathname.replace(/^\/api\/admin\/?/, "");
+    const path = routePath
+      .split("/")
       .filter(Boolean);
     const resource = path.join("/");
 
