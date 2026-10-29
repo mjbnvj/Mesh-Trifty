@@ -169,7 +169,8 @@ export async function accessToken() {
 }
 
 export async function signUp({ name, email, password }) {
-  const result = await authRequest("signup", {
+  const redirectTo = new URL("./index.html", location.href).href;
+  const result = await authRequest(`signup?redirect_to=${encodeURIComponent(redirectTo)}`, {
     body: { email, password, data: { full_name: name } }
   });
   if (result.access_token) saveSession(result);

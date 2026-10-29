@@ -6,7 +6,7 @@ The storefront is a static Cloudflare Pages site with Pages Functions for privat
 
 1. Create a Supabase project and keep its database password private.
 2. In **SQL Editor**, run [`supabase/migrations/20261030000000_commerce.sql`](./supabase/migrations/20261030000000_commerce.sql).
-3. In **Authentication → URL Configuration**, set the production storefront URL as the Site URL and allow the storefront's production URL (including `/index.html`) as a redirect URL. Password recovery redirects back to `/index.html`.
+3. In **Authentication → URL Configuration**, set the production storefront URL as the Site URL and allow the storefront's production URL (including `/index.html`) as a redirect URL. Signup confirmation and password recovery redirect back to `/index.html`; after confirming signup, the storefront immediately starts authenticator setup.
 4. Enable email confirmation in **Authentication → Providers → Email**. For this school/demo project, use Supabase's built-in email sender and customize its **Reset Password** template using [`supabase/email-templates/reset-password.html`](./supabase/email-templates/reset-password.html). The built-in sender is free, but restricted to addresses belonging to members of the Supabase organization and currently limited to 2 emails per hour; its limits can change and it has no delivery SLA. This is suitable for testing/demo, not public production use.
 5. In **Project Settings → API**, note the project URL, publishable/anon key, and service-role/secret key. The service-role key must never be put in browser code.
 

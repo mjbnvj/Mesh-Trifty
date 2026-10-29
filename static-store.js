@@ -365,7 +365,7 @@ async function submitAccount(event) {
       const result = await signUp({ name: document.getElementById("account-name").value.trim(), email, password });
       form.reset();
       if (result.needsEmailConfirmation) {
-        error.textContent = "Check your email to confirm your account, then sign in.";
+        error.textContent = "Check your email and confirm your account. You'll return here to set up your authenticator.";
       } else {
         if (await beginMfaGate()) {
           setAccountOpen(false);
